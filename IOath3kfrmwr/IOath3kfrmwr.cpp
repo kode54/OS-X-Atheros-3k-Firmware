@@ -1,4 +1,4 @@
-/* Disclaimer: 
+/* Disclaimer:
  This code is loosely based on the template of the class 
  in AnchorUSB Driver example from IOUSBFamily, 
  Open Source by Apple http://www.opensource.apple.com
@@ -9,11 +9,9 @@
  */
 #include <IOKit/IOLib.h>
 #include <IOKit/IOMessage.h>
-
 #include <IOKit/usb/IOUSBInterface.h>
 
 #include "IOath3kfrmwr.h"
-
 #include "ath3k-1fw.h"
 
 #define USB_REQ_DFU_DNLOAD	1
@@ -27,7 +25,11 @@ OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 bool 	
 local_IOath3kfrmwr::init(OSDictionary *propTable)
 {
-    IOLog("local_IOath3kfrmwr: init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n");
+#ifdef DEBUG
+    IOLog("local_IOath3kfrmwr(%p): init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n", this);
+#else
+    IOLog("IOath3kfrmwr: init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n");
+#endif
     return (super::init(propTable));
 }
 
@@ -36,7 +38,7 @@ local_IOath3kfrmwr::init(OSDictionary *propTable)
 IOService* 
 local_IOath3kfrmwr::probe(IOService *provider, SInt32 *score)
 {
-    IOLog("%s(%p)::probe\n", getName(), this);
+    DEBUG_LOG("%s(%p)::probe\n", getName(), this);
     return super::probe(provider, score);			// this returns this
 }
 
@@ -48,7 +50,7 @@ local_IOath3kfrmwr::attach(IOService *provider)
     // be careful when performing initialization in this method. It can be and
     // usually will be called mutliple 
     // times per instantiation
-    IOLog("%s(%p)::attach\n", getName(), this);
+    DEBUG_LOG("%s(%p)::attach\n", getName(), this);
     return super::attach(provider);
 }
 
@@ -57,7 +59,7 @@ void
 local_IOath3kfrmwr::detach(IOService *provider)
 {
     // Like attach, this method may be called multiple times
-    IOLog("%s(%p)::detach\n", getName(), this);
+    DEBUG_LOG("%s(%p)::detach\n", getName(), this);
     return super::detach(provider);
 }
 
@@ -71,13 +73,19 @@ local_IOath3kfrmwr::detach(IOService *provider)
 bool 
 local_IOath3kfrmwr::start(IOService *provider)
 {
+#ifdef DEBUG
+    IOLog("%s(%p)::start - Version 1.0.1 starting\n");
+#else
+    IOLog("IOath3kfrmwr: Version 1.0.1 starting\n");
+#endif
+    
     IOReturn 				err;
     const IOUSBConfigurationDescriptor *cd;
     
     // Do all the work here, on an IOKit matching thread.
     
     // 0.1 Get my USB Device
-    IOLog("%s(%p)::start!\n", getName(), this);
+    DEBUG_LOG("%s(%p)::start!\n", getName(), this);
     pUsbDev = OSDynamicCast(IOUSBDevice, provider);
     if(!pUsbDev) 
     {
@@ -90,9 +98,9 @@ local_IOath3kfrmwr::start(IOService *provider)
     if (err)
     {
         IOLog("%s(%p)::start - failed to reset the device\n", getName(), this);
-        pUsbDev->close(this);
         return false;
-    } else IOLog("%s(%p)::start: device reset\n", getName(), this);
+    }
+    DEBUG_LOG("%s(%p)::start: device reset\n", getName(), this);
     
     // 0.3 Find the first config/interface
     int numconf = 0;
@@ -100,11 +108,11 @@ local_IOath3kfrmwr::start(IOService *provider)
     {
         IOLog("%s(%p)::start - no composite configurations\n", getName(), this);
         return false;
-    } else IOLog("%s(%p)::start: num configurations %d\n", getName(), this, numconf);
+    }
+    DEBUG_LOG("%s(%p)::start: num configurations %d\n", getName(), this, numconf);
         
+    // 0.4 Set the configuration to the first config
     cd = pUsbDev->GetFullConfigurationDescriptor(0);
-    
-    // Set the configuration to the first config
     if (!cd)
     {
         IOLog("%s(%p)::start - no config descriptor\n", getName(), this);
@@ -135,7 +143,8 @@ local_IOath3kfrmwr::start(IOService *provider)
         IOLog("%s(%p)::start - unable to get device status\n", getName(), this);
         pUsbDev->close(this);
         return false;
-    } else IOLog("%s(%p)::start: device status %d\n", getName(), this, (int)status);
+    }
+    DEBUG_LOG("%s(%p)::start: device status %d\n", getName(), this, (int)status);
 
     // 2.0 Find the interface for bulk endpoint transfers
     IOUSBFindInterfaceRequest request;
@@ -160,8 +169,7 @@ local_IOath3kfrmwr::start(IOService *provider)
     }
 
     // 2.2 Get info on endpoints (optional, for diag.)
-    int numep = intf->GetNumEndpoints();
-    IOLog("%s(%p)::start: interface has %d endpoints\n", getName(), this, numep);
+    DEBUG_LOG("%s(%p)::start: interface has %d endpoints\n", getName(), this, intf->GetNumEndpoints());
     
     UInt8 transferType = 0;
     UInt16 maxPacketSize = 0;
@@ -172,7 +180,8 @@ local_IOath3kfrmwr::start(IOService *provider)
         intf->close(this);
         pUsbDev->close(this);
         return false;    
-    } else IOLog("%s(%p)::start: EP2 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
+    }
+    DEBUG_LOG("%s(%p)::start: EP2 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
     
     err = intf->GetEndpointProperties(0, 0x01, kUSBIn, &transferType, &maxPacketSize, &interval);
     if (err) {
@@ -180,8 +189,8 @@ local_IOath3kfrmwr::start(IOService *provider)
         intf->close(this);
         pUsbDev->close(this);
         return false;    
-    } else IOLog("%s(%p)::start: EP1 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
-
+    }
+    DEBUG_LOG("%s(%p)::start: EP1 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
 
     // 2.3 Get the pipe for bulk endpoint 2 Out
     IOUSBPipe * pipe = intf->GetPipeObj(0x02);
@@ -200,14 +209,13 @@ local_IOath3kfrmwr::start(IOService *provider)
      IOUSBPipe *pipe = intf->FindNextPipe(NULL, &pipereq);
      pipe = intf->FindNextPipe(pipe, &pipereq);
      if (!pipe) {
-     IOLog("%s(%p)::start - failed to find bulk out pipe 2\n", getName(), this);
+     DEBUG_LOG("%s(%p)::start - failed to find bulk out pipe 2\n", getName(), this);
      intf->close(this);
      pUsbDev->close(this);
      return false;    
      }
      */
 
-    
     // 3.0 Send request to Control Endpoint to initiate the firmware transfer
     IOUSBDevRequest ctlreq;
     ctlreq.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
@@ -273,7 +281,12 @@ local_IOath3kfrmwr::start(IOService *provider)
         size -= to_send;
         ii++;
     }
+    
+#ifdef DEBUG
     IOLog("%s(%p)::start: firmware was sent to bulk pipe\n", getName(), this);
+#else
+    IOLog("IOath3kfrmwr: firmware loaded successfully!\n");
+#endif
     
     err = membuf->complete();
     if (err) {
@@ -310,17 +323,19 @@ local_IOath3kfrmwr::start(IOService *provider)
      IOLog("%s(%p)::start: firmware was sent to bulk pipe\n", getName(), this);
      */
     
-    
     // 4.0 Get device status (it fails, but somehow is important for operational device)
     err = pUsbDev->GetDeviceStatus(&status);
     if (err)
     {
-        IOLog("%s(%p)::start - unable to get device status\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;
-    } else IOLog("%s(%p)::start: device status %d\n", getName(), this, (int)status);
-
+        // this is the normal case...
+        DEBUG_LOG("%s(%p)::start - unable to get device status\n", getName(), this);
+    }
+    else
+    {
+        // this is more of an error case... after firmware load
+        // device status shouldn't work, as the devices has changed IDs
+        IOLog("%s(%p)::start: device status %d\n", getName(), this, (int)status);
+    }
 
     // Close the interface
     intf->close(this);
@@ -335,7 +350,7 @@ local_IOath3kfrmwr::start(IOService *provider)
 void 
 local_IOath3kfrmwr::stop(IOService *provider)
 {
-    IOLog("%s(%p)::stop\n", getName(), this);
+    DEBUG_LOG("%s(%p)::stop\n", getName(), this);
     super::stop(provider);
 }
 
@@ -344,7 +359,7 @@ local_IOath3kfrmwr::stop(IOService *provider)
 bool 
 local_IOath3kfrmwr::handleOpen(IOService *forClient, IOOptionBits options, void *arg )
 {
-    IOLog("%s(%p)::handleOpen\n", getName(), this);
+    DEBUG_LOG("%s(%p)::handleOpen\n", getName(), this);
     return super::handleOpen(forClient, options, arg);
 }
 
@@ -353,7 +368,7 @@ local_IOath3kfrmwr::handleOpen(IOService *forClient, IOOptionBits options, void 
 void 
 local_IOath3kfrmwr::handleClose(IOService *forClient, IOOptionBits options )
 {
-    IOLog("%s(%p)::handleClose\n", getName(), this);
+    DEBUG_LOG("%s(%p)::handleClose\n", getName(), this);
     super::handleClose(forClient, options);
 }
 
@@ -362,7 +377,7 @@ local_IOath3kfrmwr::handleClose(IOService *forClient, IOOptionBits options )
 IOReturn 
 local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *argument)
 {
-    IOLog("%s(%p)::message\n", getName(), this);
+    DEBUG_LOG("%s(%p)::message\n", getName(), this);
     switch ( type )
     {
         case kIOMessageServiceIsTerminated:
@@ -391,7 +406,7 @@ local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *argument)
 bool 
 local_IOath3kfrmwr::terminate(IOOptionBits options)
 {
-    IOLog("%s(%p)::terminate\n", getName(), this);
+    DEBUG_LOG("%s(%p)::terminate\n", getName(), this);
     return super::terminate(options);
 }
 
@@ -399,6 +414,6 @@ local_IOath3kfrmwr::terminate(IOOptionBits options)
 bool 
 local_IOath3kfrmwr::finalize(IOOptionBits options)
 {
-    IOLog("%s(%p)::finalize\n", getName(), this);
+    DEBUG_LOG("%s(%p)::finalize\n", getName(), this);
     return super::finalize(options);
 }
