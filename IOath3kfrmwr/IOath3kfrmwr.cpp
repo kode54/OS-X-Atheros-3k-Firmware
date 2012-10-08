@@ -27,7 +27,7 @@ OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 bool 	
 local_IOath3kfrmwr::init(OSDictionary *propTable)
 {
-    IOLog("local_IOath3kfrmwr: init\n");
+    IOLog("local_IOath3kfrmwr: init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n");
     return (super::init(propTable));
 }
 
