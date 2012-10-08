@@ -2,6 +2,12 @@
 #ifndef __IOATH3KFRMWR__
 #define __IOATH3KFRMWR__
 
+#ifdef DEBUG_MSG
+#define DEBUG_LOG(args...)  IOLog(args)
+#else
+#define DEBUG_LOG(args...)
+#endif
+
 #include <IOKit/usb/IOUSBDevice.h>
 
 class local_IOath3kfrmwr : public IOService
