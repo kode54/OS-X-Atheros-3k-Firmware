@@ -2,14 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>Source Code</key>
+	<string>https://github.com/RehabMan/OS-X-Atheros-3k-Firmware</string>
+	<key>CFBundleGetInfoString</key>
+	<string>1.0.2, Open Source 2012 mac4mat, RehabMan</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
 	<string>${EXECUTABLE_NAME}</string>
-	<key>CFBundleIconFile</key>
-	<string></string>
 	<key>CFBundleIdentifier</key>
-	<string>local.${PRODUCT_NAME:rfc1034identifier}</string>
+	<string>org.rehabman.${PRODUCT_NAME:rfc1034identifier}</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -27,7 +29,7 @@
 		<key>IOath3kfrmwr</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
-			<string>local.${PRODUCT_NAME:rfc1034identifier}</string>
+			<string>org.rehabman.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
 			<string>local_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
