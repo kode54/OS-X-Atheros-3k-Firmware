@@ -15,7 +15,13 @@
 #include "ath3k-1fw.h"
 
 #define USB_REQ_DFU_DNLOAD	1
-#define BULK_SIZE	4096
+
+//rehabman:
+// Note: mac4mat's original had this BULK_SIZE at 4096.  Turns out sending
+// the firmware 4k at a time doesn't quite work in SL. And it seems
+// sending it 1k at a time works in SL, Lion, and ML.
+
+#define BULK_SIZE	1024
 #define MAX_FILE_SIZE 2000000
 
 
@@ -272,7 +278,7 @@ local_IOath3kfrmwr::start(IOService *provider)
         memcpy(buftmp, buf, to_send);
         err = pipe->Write(membuf, 10000, 10000, to_send);
         if (err) {
-            IOLog("%s(%p)::start - failed to write firmware to bulk pipe (%d)\n", getName(), this, ii);
+            IOLog("%s(%p)::start - failed to write firmware to bulk pipe (err:%d, block:%d, to_send:%d)\n", getName(), this, err, ii, to_send);
             intf->close(this);
             pUsbDev->close(this);
             return false; 
