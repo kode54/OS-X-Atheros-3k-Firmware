@@ -12,7 +12,10 @@
 #include <IOKit/usb/IOUSBInterface.h>
 
 #include "IOath3kfrmwr.h"
+
+#ifndef IOATH3KNULL
 #include "ath3k-1fw.h"
+#endif
 
 #define USB_REQ_DFU_DNLOAD	1
 
@@ -117,7 +120,7 @@ local_IOath3kfrmwr::start(IOService *provider)
     }
     DEBUG_LOG("%s(%p)::start: num configurations %d\n", getName(), this, numconf);
         
-    // 0.4 Set the configuration to the first config
+    // 0.4 Get first config descriptor
     cd = pUsbDev->GetFullConfigurationDescriptor(0);
     if (!cd)
     {
@@ -152,6 +155,15 @@ local_IOath3kfrmwr::start(IOService *provider)
     }
     DEBUG_LOG("%s(%p)::start: device status %d\n", getName(), this, (int)status);
 
+// rehabman:
+// IOATH3KNULL can be used to create an IOath3kfrmwr.kext that effectively
+// disables the device, so a 3rd party device can be used instead.
+// To make this really work, there is probably additional device IDs that must be
+// entered in the Info.plist
+//
+// Credit to mac4mat for this solution too...
+    
+#ifndef IOATH3KNULL
     // 2.0 Find the interface for bulk endpoint transfers
     IOUSBFindInterfaceRequest request;
     request.bInterfaceClass = kIOUSBFindInterfaceDontCare;
@@ -349,6 +361,13 @@ local_IOath3kfrmwr::start(IOService *provider)
     // Close the USB device
     pUsbDev->close(this);
     return false;  // return false to allow a different driver to load
+#else   // !IOATH3KNULL
+    // Do not load the firmware, leave the controller non-operational
+    
+    // Do not close the USB device
+    //pUsbDev->close(this);
+    return true;  // return true to retain exclusive access to USB device
+#endif  // !IOATH3KNULL
 }
 
 
