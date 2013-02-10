@@ -83,9 +83,9 @@ bool
 local_IOath3kfrmwr::start(IOService *provider)
 {
 #ifdef DEBUG
-    IOLog("%s(%p)::start - Version 1.0.4 starting\n", getName(), this);
+    IOLog("%s(%p)::start - Version 1.0.5 starting\n", getName(), this);
 #else
-    IOLog("IOath3kfrmwr: Version 1.0.4 starting\n");
+    IOLog("IOath3kfrmwr: Version 1.0.5 starting\n");
 #endif
     
     IOReturn 				err;
