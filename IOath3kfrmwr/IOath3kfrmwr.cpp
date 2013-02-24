@@ -17,6 +17,8 @@
 #include "ath3k-1fw.h"
 #endif
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
 #define USB_REQ_DFU_DNLOAD	1
 
 //rehabman:
@@ -25,14 +27,15 @@
 // sending it 1k at a time works in SL, Lion, and ML.
 
 #define BULK_SIZE	1024
-#define MAX_FILE_SIZE 2000000
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
-OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 #define super IOService
+OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 
-bool 	
-local_IOath3kfrmwr::init(OSDictionary *propTable)
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+bool local_IOath3kfrmwr::init(OSDictionary *propTable)
 {
 #ifdef DEBUG
     IOLog("local_IOath3kfrmwr(%p): init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n", this);
@@ -42,19 +45,13 @@ local_IOath3kfrmwr::init(OSDictionary *propTable)
     return (super::init(propTable));
 }
 
-
-
-IOService* 
-local_IOath3kfrmwr::probe(IOService *provider, SInt32 *score)
+IOService* local_IOath3kfrmwr::probe(IOService *provider, SInt32 *score)
 {
     DEBUG_LOG("%s(%p)::probe\n", getName(), this);
     return super::probe(provider, score);			// this returns this
 }
 
-
-
-bool 
-local_IOath3kfrmwr::attach(IOService *provider)
+bool local_IOath3kfrmwr::attach(IOService *provider)
 {
     // be careful when performing initialization in this method. It can be and
     // usually will be called mutliple 
@@ -63,29 +60,24 @@ local_IOath3kfrmwr::attach(IOService *provider)
     return super::attach(provider);
 }
 
-
-void 
-local_IOath3kfrmwr::detach(IOService *provider)
+void local_IOath3kfrmwr::detach(IOService *provider)
 {
     // Like attach, this method may be called multiple times
     DEBUG_LOG("%s(%p)::detach\n", getName(), this);
     return super::detach(provider);
 }
 
-
-
 //
 // start
 // when this method is called, I have been selected as the driver for this device.
 // I can still return false to allow a different driver to load
 //
-bool 
-local_IOath3kfrmwr::start(IOService *provider)
+bool local_IOath3kfrmwr::start(IOService *provider)
 {
 #ifdef DEBUG
-    IOLog("%s(%p)::start - Version 1.0.5 starting\n", getName(), this);
+    IOLog("%s(%p)::start - Version 1.1.0 starting\n", getName(), this);
 #else
-    IOLog("IOath3kfrmwr: Version 1.0.5 starting\n");
+    IOLog("IOath3kfrmwr: Version 1.1.0 starting\n");
 #endif
     
     IOReturn 				err;
@@ -189,35 +181,48 @@ local_IOath3kfrmwr::start(IOService *provider)
     // 2.2 Get info on endpoints (optional, for diag.)
     DEBUG_LOG("%s(%p)::start: interface has %d endpoints\n", getName(), this, intf->GetNumEndpoints());
     
-    UInt8 transferType = 0;
-    UInt16 maxPacketSize = 0;
-    UInt8 interval = 0;
-    err = intf->GetEndpointProperties(0, 0x02, kUSBOut, &transferType, &maxPacketSize, &interval);
-    if (err) {
-        IOLog("%s(%p)::start - failed to get endpoint 2 properties\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;    
+    OSArray* check = OSDynamicCast(OSArray, getProperty("CheckEndpoints"));
+    if (check) {
+        int count = check->getCount();
+        for (int i = 0; i < count; i++) {
+            OSDictionary* ep = OSDynamicCast(OSDictionary, check->getObject(i));
+            if (!ep)
+                continue;
+            OSNumber* nEndpoint = OSDynamicCast(OSNumber, ep->getObject("EndpointNumber"));
+            // TransferType: kUsbIn=1, kUsbOut=0
+            OSNumber* nTransType = OSDynamicCast(OSNumber, ep->getObject("TransferType"));
+            if (!nEndpoint || !nTransType)
+                continue;
+            UInt8 transferType = 0;
+            UInt16 maxPacketSize = 0;
+            UInt8 interval = 0;
+            err = intf->GetEndpointProperties(0, nEndpoint->unsigned8BitValue(), nTransType->unsigned8BitValue(), &transferType, &maxPacketSize, &interval);
+            if (err) {
+                IOLog("%s(%p)::start - failed to get endpoint %d properties\n", getName(), this, i);
+                intf->close(this);
+                pUsbDev->close(this);
+                return false;
+            }
+            DEBUG_LOG("%s(%p)::start: EP%d %d %d %d\n", getName(), this, nEndpoint->unsigned8BitValue(), transferType, maxPacketSize, interval);
+        }
     }
-    DEBUG_LOG("%s(%p)::start: EP2 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
     
-    err = intf->GetEndpointProperties(0, 0x01, kUSBIn, &transferType, &maxPacketSize, &interval);
-    if (err) {
-        IOLog("%s(%p)::start - failed to get endpoint 1 properties\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;    
-    }
-    DEBUG_LOG("%s(%p)::start: EP1 %d %d %d\n", getName(), this, transferType, maxPacketSize, interval);
-
     // 2.3 Get the pipe for bulk endpoint 2 Out
-    IOUSBPipe * pipe = intf->GetPipeObj(0x02);
-    if (!pipe) {
-        IOLog("%s(%p)::start - failed to find bulk out pipe\n", getName(), this);
+    OSNumber* nPipe = OSDynamicCast(OSNumber, getProperty("PipeNumber"));
+    if (!nPipe) {
+        DEBUG_LOG("%s(%p)::start - PipeNumber not specified\n", getName(), this);
         intf->close(this);
         pUsbDev->close(this);
-        return false;    
+        return false;
     }
+    IOUSBPipe * pipe = intf->GetPipeObj(nPipe->unsigned8BitValue());
+    if (!pipe) {
+        IOLog("%s(%p)::start - failed to find bulk out pipe %d\n", getName(), this, nPipe->unsigned8BitValue());
+        intf->close(this);
+        pUsbDev->close(this);
+        return false;
+    }
+   
     /*  // TODO: Test the alternative way to do it:
      IOUSBFindEndpointRequest pipereq;
      pipereq.type = kUSBBulk;
@@ -370,37 +375,25 @@ local_IOath3kfrmwr::start(IOService *provider)
 #endif  // !IOATH3KNULL
 }
 
-
-
-void 
-local_IOath3kfrmwr::stop(IOService *provider)
+void local_IOath3kfrmwr::stop(IOService *provider)
 {
     DEBUG_LOG("%s(%p)::stop\n", getName(), this);
     super::stop(provider);
 }
 
-
-
-bool 
-local_IOath3kfrmwr::handleOpen(IOService *forClient, IOOptionBits options, void *arg )
+bool local_IOath3kfrmwr::handleOpen(IOService *forClient, IOOptionBits options, void *arg )
 {
     DEBUG_LOG("%s(%p)::handleOpen\n", getName(), this);
     return super::handleOpen(forClient, options, arg);
 }
 
-
-
-void 
-local_IOath3kfrmwr::handleClose(IOService *forClient, IOOptionBits options )
+void local_IOath3kfrmwr::handleClose(IOService *forClient, IOOptionBits options )
 {
     DEBUG_LOG("%s(%p)::handleClose\n", getName(), this);
     super::handleClose(forClient, options);
 }
 
-
-
-IOReturn 
-local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *argument)
+IOReturn local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *argument)
 {
     DEBUG_LOG("%s(%p)::message\n", getName(), this);
     switch ( type )
@@ -426,18 +419,13 @@ local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *argument)
     return super::message(type, provider, argument);
 }
 
-
-
-bool 
-local_IOath3kfrmwr::terminate(IOOptionBits options)
+bool local_IOath3kfrmwr::terminate(IOOptionBits options)
 {
     DEBUG_LOG("%s(%p)::terminate\n", getName(), this);
     return super::terminate(options);
 }
 
-
-bool 
-local_IOath3kfrmwr::finalize(IOOptionBits options)
+bool local_IOath3kfrmwr::finalize(IOOptionBits options)
 {
     DEBUG_LOG("%s(%p)::finalize\n", getName(), this);
     return super::finalize(options);
