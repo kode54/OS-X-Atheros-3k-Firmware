@@ -21,6 +21,7 @@
 		7089FA6D1509B9E0008E9E6B /* IOath3kfrmwr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOath3kfrmwr.h; sourceTree = "<group>"; };
 		7089FA6E1509B9E0008E9E6B /* IOath3kfrmwr.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = IOath3kfrmwr.cpp; sourceTree = "<group>"; };
 		7089FA701509B9E0008E9E6B /* IOath3kfrmwr-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IOath3kfrmwr-Prefix.pch"; sourceTree = "<group>"; };
+		844778E216E7FE4400B27895 /* makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = SOURCE_ROOT; usesTabs = 1; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +71,7 @@
 		7089FA671509B9E0008E9E6B /* IOath3kfrmwr */ = {
 			isa = PBXGroup;
 			children = (
+				844778E216E7FE4400B27895 /* makefile */,
 				70056267150AB10C00578176 /* ath3k-1fw.h */,
 				7089FA6D1509B9E0008E9E6B /* IOath3kfrmwr.h */,
 				7089FA6E1509B9E0008E9E6B /* IOath3kfrmwr.cpp */,
