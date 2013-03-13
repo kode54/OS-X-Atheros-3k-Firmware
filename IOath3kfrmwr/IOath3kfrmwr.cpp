@@ -30,11 +30,11 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
-#define super IOService
 OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
+#ifdef DEBUG
 bool local_IOath3kfrmwr::init(OSDictionary *propTable)
 {
 #ifdef DEBUG
@@ -66,6 +66,7 @@ void local_IOath3kfrmwr::detach(IOService *provider)
     DEBUG_LOG("%s(%p)::detach\n", getName(), this);
     return super::detach(provider);
 }
+#endif // DEBUG
 
 //
 // start
@@ -375,6 +376,8 @@ bool local_IOath3kfrmwr::start(IOService *provider)
 #endif  // !IOATH3KNULL
 }
 
+#ifdef DEBUG
+
 void local_IOath3kfrmwr::stop(IOService *provider)
 {
     DEBUG_LOG("%s(%p)::stop\n", getName(), this);
@@ -415,7 +418,6 @@ IOReturn local_IOath3kfrmwr::message(UInt32 type, IOService *provider, void *arg
             break;
     }
     
-    return kIOReturnSuccess;
     return super::message(type, provider, argument);
 }
 
@@ -430,3 +432,5 @@ bool local_IOath3kfrmwr::finalize(IOOptionBits options)
     DEBUG_LOG("%s(%p)::finalize\n", getName(), this);
     return super::finalize(options);
 }
+
+#endif

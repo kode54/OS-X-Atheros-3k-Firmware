@@ -12,12 +12,14 @@
 
 class local_IOath3kfrmwr : public IOService
 {
+    typedef IOService super;
     OSDeclareDefaultStructors(local_IOath3kfrmwr)
     
 protected:
     IOUSBDevice * pUsbDev;
         
 public:
+#ifdef DEBUG
     // this is from the IORegistryEntry - no provider yet
     virtual bool 	init(OSDictionary *propTable);
     
@@ -26,8 +28,10 @@ public:
     
     virtual bool attach(IOService *provider);
     virtual void detach(IOService *provider);
+#endif
     
     virtual bool start(IOService *provider);
+#ifdef DEBUG
     virtual void stop(IOService *provider);
     
     virtual bool handleOpen(IOService *forClient, IOOptionBits options = 0, void *arg = 0 );
@@ -37,6 +41,7 @@ public:
     
     virtual bool terminate(IOOptionBits options = 0);
     virtual bool finalize(IOOptionBits options);
+#endif
 };
 
 #endif //__IOATH3KFRMWR__ 
