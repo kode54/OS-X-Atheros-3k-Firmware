@@ -1,6 +1,6 @@
 # really just some handy scripts...
 
-KEXT=ACPIPoller.kext
+KEXT=IOath3kfrmwr.kext
 DIST=RehabMan-Atheros
 
 ifeq ($(findstring 32,$(BITS)),32)
