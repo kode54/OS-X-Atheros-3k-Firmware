@@ -10,7 +10,9 @@
 
 #include <IOKit/usb/IOUSBDevice.h>
 
-class local_IOath3kfrmwr : public IOService
+#define EXPORT __attribute__((visibility("default")))
+
+class EXPORT local_IOath3kfrmwr : public IOService
 {
     typedef IOService super;
     OSDeclareDefaultStructors(local_IOath3kfrmwr)
