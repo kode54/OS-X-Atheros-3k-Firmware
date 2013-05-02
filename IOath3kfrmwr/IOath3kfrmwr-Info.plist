@@ -26,6 +26,38 @@
 	<string>1.1.1</string>
 	<key>IOKitPersonalities</key>
 	<dict>
+		<key>IOath3kfrmwr-0489-e02c</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
+			<key>IOClass</key>
+			<string>local_IOath3kfrmwr</string>
+			<key>IOProviderClass</key>
+			<string>IOUSBDevice</string>
+			<key>bcdDevice</key>
+			<integer>1</integer>
+			<key>idProduct</key>
+			<integer>57388</integer>
+			<key>idVendor</key>
+			<integer>1161</integer>
+			<key>CheckEndpoints</key>
+			<array>
+				<dict>
+					<key>EndpointNumber</key>
+					<integer>2</integer>
+					<key>TransferType</key>
+					<integer>0</integer>
+				</dict>
+				<dict>
+					<key>EndpointNumber</key>
+					<integer>1</integer>
+					<key>TransferType</key>
+					<integer>1</integer>
+				</dict>
+			</array>
+			<key>PipeNumber</key>
+			<integer>2</integer>
+		</dict>
 		<key>IOath3kfrmwr-0cf3-3000</key>
 		<dict>
 			<key>CFBundleIdentifier</key>
