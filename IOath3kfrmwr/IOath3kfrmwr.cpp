@@ -76,9 +76,9 @@ void local_IOath3kfrmwr::detach(IOService *provider)
 bool local_IOath3kfrmwr::start(IOService *provider)
 {
 #ifdef DEBUG
-    IOLog("%s(%p)::start - Version 1.1.3 starting\n", getName(), this);
+    IOLog("%s(%p)::start - Version 1.1.4 starting\n", getName(), this);
 #else
-    IOLog("IOath3kfrmwr: Version 1.1.3 starting\n");
+    IOLog("IOath3kfrmwr: Version 1.1.4 starting\n");
 #endif
     
     IOReturn 				err;
