@@ -30,7 +30,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
-OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
+OSDefineMetaClassAndStructors(org_rehabman_IOath3kfrmwr, IOService)
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
@@ -38,7 +38,7 @@ OSDefineMetaClassAndStructors(local_IOath3kfrmwr, IOService)
 bool local_IOath3kfrmwr::init(OSDictionary *propTable)
 {
 #ifdef DEBUG
-    IOLog("local_IOath3kfrmwr(%p): init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n", this);
+    IOLog("org_rehabman_IOath3kfrmwr(%p): init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n", this);
 #else
     IOLog("IOath3kfrmwr: init (https://github.com/RehabMan/OS-X-Atheros-3k-Firmware.git)\n");
 #endif
@@ -76,9 +76,9 @@ void local_IOath3kfrmwr::detach(IOService *provider)
 bool local_IOath3kfrmwr::start(IOService *provider)
 {
 #ifdef DEBUG
-    IOLog("%s(%p)::start - Version 1.1.6 starting\n", getName(), this);
+    IOLog("%s(%p)::start - Version 1.2.0 starting\n", getName(), this);
 #else
-    IOLog("IOath3kfrmwr: Version 1.1.6 starting\n");
+    IOLog("IOath3kfrmwr: Version 1.2.0 starting\n");
 #endif
     
     IOReturn 				err;

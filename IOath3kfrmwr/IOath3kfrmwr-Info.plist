@@ -5,7 +5,7 @@
 	<key>Source Code</key>
 	<string>https://github.com/RehabMan/OS-X-Atheros-3k-Firmware</string>
 	<key>CFBundleGetInfoString</key>
-	<string>1.1.6, Open Source 2012-2013 mac4mat, RehabMan</string>
+	<string>1.2.0, Open Source 2012-2013 mac4mat, RehabMan</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
@@ -19,11 +19,11 @@
 	<key>CFBundlePackageType</key>
 	<string>KEXT</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1</string>
+	<string>1.2.0</string>
 	<key>CFBundleSignature</key>
 	<string>Mac OS X</string>
 	<key>CFBundleVersion</key>
-	<string>1.1.6</string>
+	<string>1.2.0</string>
 	<key>IOKitPersonalities</key>
 	<dict>
 		<key>IOath3kfrmwr-13d3-3304</key>
@@ -31,7 +31,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -63,7 +63,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -95,7 +95,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -127,7 +127,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -159,7 +159,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -178,7 +178,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -210,7 +210,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>
@@ -242,7 +242,7 @@
 			<key>CFBundleIdentifier</key>
 			<string>org.rehabman.driver.${PRODUCT_NAME:rfc1034identifier}</string>
 			<key>IOClass</key>
-			<string>local_IOath3kfrmwr</string>
+			<string>org_rehabman_IOath3kfrmwr</string>
 			<key>IOProviderClass</key>
 			<string>IOUSBDevice</string>
 			<key>bcdDevice</key>

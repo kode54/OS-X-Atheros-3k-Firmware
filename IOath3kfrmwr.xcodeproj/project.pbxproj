@@ -19,7 +19,7 @@
 		7089FA691509B9E0008E9E6B /* IOath3kfrmwr-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "IOath3kfrmwr-Info.plist"; sourceTree = "<group>"; };
 		7089FA6B1509B9E0008E9E6B /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7089FA6D1509B9E0008E9E6B /* IOath3kfrmwr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IOath3kfrmwr.h; sourceTree = "<group>"; };
-		7089FA6E1509B9E0008E9E6B /* IOath3kfrmwr.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = IOath3kfrmwr.cpp; sourceTree = "<group>"; };
+		7089FA6E1509B9E0008E9E6B /* IOath3kfrmwr.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; lineEnding = 0; path = IOath3kfrmwr.cpp; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
 		7089FA701509B9E0008E9E6B /* IOath3kfrmwr-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IOath3kfrmwr-Prefix.pch"; sourceTree = "<group>"; };
 		844778E216E7FE4400B27895 /* makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = SOURCE_ROOT; usesTabs = 1; };
 /* End PBXFileReference section */

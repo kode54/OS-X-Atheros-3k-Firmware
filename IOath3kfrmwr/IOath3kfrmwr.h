@@ -12,10 +12,12 @@
 
 #define EXPORT __attribute__((visibility("default")))
 
+#define local_IOath3kfrmwr org_rehabman_IOath3kfrmwr
+
 class EXPORT local_IOath3kfrmwr : public IOService
 {
     typedef IOService super;
-    OSDeclareDefaultStructors(local_IOath3kfrmwr)
+    OSDeclareDefaultStructors(org_rehabman_IOath3kfrmwr)
     
 protected:
     IOUSBDevice * pUsbDev;
