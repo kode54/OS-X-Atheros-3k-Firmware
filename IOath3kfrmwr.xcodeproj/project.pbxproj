@@ -216,8 +216,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OTHER_CFLAGS = "-fno-stack-protector";
 				OTHER_LDFLAGS = "";
-				"OTHER_LDFLAGS[arch=x86_64]" = "-dead_strip";
-				SDKROOT = macosx10.8;
+				SDKROOT = macosx;
 				STRIP_STYLE = "non-global";
 			};
 			name = Debug;
@@ -242,8 +241,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OTHER_CFLAGS = "-fno-stack-protector";
 				OTHER_LDFLAGS = "";
-				"OTHER_LDFLAGS[arch=x86_64]" = "-dead_strip";
-				SDKROOT = macosx10.8;
+				SDKROOT = macosx;
 				STRIP_STYLE = "non-global";
 			};
 			name = Release;
