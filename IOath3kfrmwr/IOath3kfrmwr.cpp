@@ -15,11 +15,31 @@
 
 #ifndef IOATH3KNULL
 #include "ath3k-1fw.h"
+
+// Ath3012 stuff
+#include "AthrBT.h"
+#include "ramps.h"
 #endif
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
 #define USB_REQ_DFU_DNLOAD	1
+
+#define ATH3K_DNLOAD				0x01
+#define ATH3K_GETSTATE				0x05
+#define ATH3K_SET_NORMAL_MODE		0x07
+#define ATH3K_GETVERSION			0x09
+#define USB_REG_SWITCH_VID_PID		0x0a
+
+#define ATH3K_MODE_MASK				0x3F
+#define ATH3K_NORMAL_MODE			0x0E
+
+#define ATH3K_PATCH_UPDATE			0x80
+#define ATH3K_SYSCFG_UPDATE			0x40
+
+#define ATH3K_XTAL_FREQ_26M			0x00
+#define ATH3K_XTAL_FREQ_40M			0x01
+#define ATH3K_XTAL_FREQ_19P2		0x02
 
 //rehabman:
 // Note: mac4mat's original had this BULK_SIZE at 4096.  Turns out sending
@@ -67,6 +87,450 @@ void local_IOath3kfrmwr::detach(IOService *provider)
     return super::detach(provider);
 }
 #endif // DEBUG
+
+//
+// load_firmware
+// Send the main firmware block
+//
+
+bool local_IOath3kfrmwr::load_firmware(IOUSBInterface * intf, unsigned char const* firmware, size_t firmware_size)
+{
+    IOReturn 				err;
+
+    // 2.3 Get the pipe for bulk endpoint 2 Out
+    OSNumber* nPipe = OSDynamicCast(OSNumber, getProperty("PipeNumber"));
+    if (!nPipe) {
+        DEBUG_LOG("%s(%p)::load_firmware - PipeNumber not specified\n", getName(), this);
+        return false;
+    }
+    IOUSBPipe * pipe = intf->GetPipeObj(nPipe->unsigned8BitValue());
+    if (!pipe) {
+        IOLog("%s(%p)::load_firmware - failed to find bulk out pipe %d\n", getName(), this, nPipe->unsigned8BitValue());
+        return false;
+    }
+    
+    /*  // TODO: Test the alternative way to do it:
+     IOUSBFindEndpointRequest pipereq;
+     pipereq.type = kUSBBulk;
+     pipereq.direction = kUSBOut;
+     pipereq.maxPacketSize = BULK_SIZE;
+     pipereq.interval = 0;
+     IOUSBPipe *pipe = intf->FindNextPipe(NULL, &pipereq);
+     pipe = intf->FindNextPipe(pipe, &pipereq);
+     if (!pipe) {
+     DEBUG_LOG("%s(%p)::start - failed to find bulk out pipe 2\n", getName(), this);
+     return false;
+     }
+     */
+    
+    size_t size = min(firmware_size, 20);
+    
+    // 3.0 Send request to Control Endpoint to initiate the firmware transfer
+    IOUSBDevRequest ctlreq;
+    ctlreq.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
+    ctlreq.bRequest = USB_REQ_DFU_DNLOAD;
+    ctlreq.wValue = 0;
+    ctlreq.wIndex = 0;
+    ctlreq.wLength = size;
+    ctlreq.pData = (void *) firmware;
+    
+#if 0  // Trying to troubleshoot the problem after Restart (with OSBundleRequired Root)
+    for (int irep = 0; irep < 5; irep++) { // retry on error
+        err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
+        if (err)
+            IOLog("%s(%p)::load_firmware - failed to initiate firmware transfer (%d), retrying (%d)\n", getName(), this, err, irep+1);
+        else
+            break;
+    }
+#else
+    err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
+#endif
+    if (err) {
+        IOLog("%s(%p)::load_firmware - failed to initiate firmware transfer (%d)\n", getName(), this, err);
+        return false;
+    }
+    
+    // 3.1 Create IOMemoryDescriptor for bulk transfers
+    char buftmp[BULK_SIZE];
+    IOMemoryDescriptor * membuf = IOMemoryDescriptor::withAddress(&buftmp, BULK_SIZE, kIODirectionNone);
+    if (!membuf) {
+        IOLog("%s(%p)::load_firmware - failed to map memory descriptor\n", getName(), this);
+        return false;
+    }
+    err = membuf->prepare();
+    if (err) {
+        IOLog("%s(%p)::load_firmware - failed to prepare memory descriptor\n", getName(), this);
+        return false;
+    }
+    
+    // 3.2 Send the rest of firmware to the bulk pipe
+    unsigned char const* buf = firmware + size;
+    size = firmware_size - size;
+    int ii = 1;
+    while (size) {
+        int to_send = size < BULK_SIZE ? (int)size : BULK_SIZE;
+        
+        memcpy(buftmp, buf, to_send);
+        err = pipe->Write(membuf, 10000, 10000, to_send);
+        if (err) {
+            IOLog("%s(%p)::load_firmware - failed to write firmware to bulk pipe (err:%d, block:%d, to_send:%d)\n", getName(), this, err, ii, to_send);
+            return false;
+        }
+        buf += to_send;
+        size -= to_send;
+        ii++;
+    }
+    
+#ifdef DEBUG
+    IOLog("%s(%p)::load_firmware: firmware was sent to bulk pipe\n", getName(), this);
+#else
+    IOLog("IOath3kfrmwr: firmware loaded successfully!\n");
+#endif
+    
+    err = membuf->complete();
+    if (err) {
+        IOLog("%s(%p)::load_firmware - failed to complete memory descriptor\n", getName(), this);
+        return false;
+    }
+    
+    return true;
+}
+
+//
+// get_state
+// checks the current hardware state, needed by ath3012 devices
+//
+bool local_IOath3kfrmwr::get_state(IOUSBInterface * intf, unsigned char * state)
+{
+    IOReturn err;
+    
+    char buf;
+    
+    IOUSBDevRequest ctlreq;
+    ctlreq.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBVendor, kUSBDevice);
+    ctlreq.bRequest = ATH3K_GETSTATE;
+    ctlreq.wValue = 0;
+    ctlreq.wIndex = 0;
+    ctlreq.wLength = sizeof(buf);
+    ctlreq.pData = &buf;
+
+    err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
+
+    if ( err )
+    {
+        IOLog("%s(%p)::get_state - failed to read device state\n", getName(), this);
+        return false;
+    }
+    
+    *state = buf;
+    
+    return true;
+}
+
+//
+// get_version
+// retrieves the device version descriptor
+//
+bool local_IOath3kfrmwr::get_version(IOUSBInterface *intf, struct ath3k_version * version)
+{
+    IOReturn err;
+    
+    struct ath3k_version buf;
+    
+    IOUSBDevRequest ctlreq;
+    ctlreq.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBVendor, kUSBDevice);
+    ctlreq.bRequest = ATH3K_GETVERSION;
+    ctlreq.wValue = 0;
+    ctlreq.wIndex = 0;
+    ctlreq.wLength = sizeof(buf);
+    ctlreq.pData = &buf;
+    
+    err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
+    
+    if ( err )
+    {
+        IOLog("%s(%p)::get_version - failed to read device version\n", getName(), this);
+        return false;
+    }
+    
+    *version = buf;
+    
+    return true;
+}
+
+//
+// switch_pid
+// switches ath3012 device vid/pid
+//
+bool local_IOath3kfrmwr::switch_pid(IOUSBInterface *intf)
+{
+    IOReturn err;
+    
+    IOUSBDevRequest ctlreq;
+    ctlreq.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBVendor, kUSBDevice);
+    ctlreq.bRequest = USB_REG_SWITCH_VID_PID;
+    ctlreq.wValue = 0;
+    ctlreq.wIndex = 0;
+    ctlreq.wLength = 0;
+    ctlreq.pData = 0;
+    
+    err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
+    
+    if ( err )
+    {
+        IOLog("%s(%p)::switch_pid - failed to switch device pid\n", getName(), this);
+        return false;
+    }
+ 
+    return true;
+}
+
+//
+// set_normal_mode
+// sets ath3012 device into normal mode
+//
+bool local_IOath3kfrmwr::set_normal_mode(IOUSBInterface *intf)
+{
+    bool ret;
+	unsigned char fw_state;
+    IOReturn err;
+    
+	ret = get_state(intf, &fw_state);
+	if (!ret) {
+        IOLog("%s(%p)::set_normal_mode - Can't get state to change to normal mode\n", getName(), this);
+		return false;
+	}
+    
+	if ((fw_state & ATH3K_MODE_MASK) == ATH3K_NORMAL_MODE) {
+        IOLog("%s(%p)::set_normal_mode - firmware was already in normal mode\n", getName(), this);
+		return true;
+	}
+    
+    IOUSBDevRequest ctlreq;
+    ctlreq.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBVendor, kUSBDevice);
+    ctlreq.bRequest = ATH3K_SET_NORMAL_MODE;
+    ctlreq.wValue = 0;
+    ctlreq.wIndex = 0;
+    ctlreq.wLength = 0;
+    ctlreq.pData = 0;
+
+    err = pUsbDev->DeviceRequest(&ctlreq);
+    
+    if ( err )
+    {
+        IOLog("%s(%p)::set_normal_mode - failed to change to normal mode\n", getName(), this);
+        return false;
+    }
+    
+    return true;
+}
+
+//
+// load_patch
+// loads an ath3012 firmware patch
+//
+bool local_IOath3kfrmwr::load_patch(IOUSBInterface *intf)
+{
+	unsigned char fw_state;
+	struct ath3k_version fw_version, pt_version;
+	int ret;
+    
+	ret = get_state(intf, &fw_state);
+	if (!ret) {
+        IOLog("%s(%p)::load_patch - can't get state to change to load ram patch\n", getName(), this);
+		return false;
+	}
+    
+	if (fw_state & ATH3K_PATCH_UPDATE) {
+        IOLog("%s(%p)::load_patch - patch was already downloaded\n", getName(), this);
+		return true;
+	}
+    
+	ret = get_version(intf, &fw_version);
+	if (!ret) {
+        IOLog("%s(%p)::load_patch - can't get version to change to load ram patch\n", getName(), this);
+		return false;
+	}
+
+    const unsigned char * firmware;
+    size_t firmware_size;
+    
+    switch ( fw_version.rom_version )
+    {
+        case 0x01020001:
+            firmware = firmware_0x01020001;
+            firmware_size = sizeof(firmware_0x01020001);
+            break;
+            
+        case 0x01020200:
+            firmware = firmware_0x01020200;
+            firmware_size = sizeof(firmware_0x01020200);
+            break;
+            
+        case 0x01020201:
+            firmware = firmware_0x01020201;
+            firmware_size = sizeof(firmware_0x01020201);
+            break;
+            
+        case 0x11020000:
+            firmware = firmware_0x11020000;
+            firmware_size = sizeof(firmware_0x11020000);
+            break;
+            
+        case 0x31010000:
+            firmware = firmware_0x31010000;
+            firmware_size = sizeof(firmware_0x31010000);
+            break;
+            
+        case 0x41020000:
+            firmware = firmware_0x41020000;
+            firmware_size = sizeof(firmware_0x41020000);
+            break;
+            
+        default:
+            IOLog("%s(%p)::load_patch - unknown rom version 0x%08x\n", getName(), this, fw_version.rom_version );
+            return false;
+    }
+    
+	pt_version.rom_version = *(uint32_t *)(firmware + firmware_size - 8);
+	pt_version.build_version = *(uint32_t *)
+    (firmware + firmware_size - 4);
+    
+	if ((pt_version.rom_version != fw_version.rom_version) ||
+		(pt_version.build_version <= fw_version.build_version)) {
+        IOLog("%s(%p)::load_patch - patch block version did not match with firmware\n", getName(), this);
+        return false;
+	}
+    
+	ret = load_firmware(intf, firmware, firmware_size);
+    
+	return ret;
+}
+
+//
+// load_syscfg
+// loads an ath3012 system configuration
+//
+bool local_IOath3kfrmwr::load_syscfg(IOUSBInterface *intf)
+{
+    bool ret;
+	unsigned char fw_state;
+	struct ath3k_version fw_version;
+	int clk_value;
+    
+	ret = get_state(intf, &fw_state);
+	if (!ret) {
+        IOLog("%s(%p)::load_syscfg - can't get state to change to load configuration\n", getName(), this);
+		return false;
+	}
+    
+	ret = get_version(intf, &fw_version);
+	if (!ret) {
+        IOLog("%s(%p)::load_syscfg - can't get version to change to load ram patch\n", getName(), this);
+		return false;
+	}
+    
+	switch (fw_version.ref_clock) {
+            
+        case ATH3K_XTAL_FREQ_26M:
+            clk_value = 26;
+            break;
+        case ATH3K_XTAL_FREQ_40M:
+            clk_value = 40;
+            break;
+        case ATH3K_XTAL_FREQ_19P2:
+            clk_value = 19;
+            break;
+        default:
+            clk_value = 0;
+            break;
+	}
+    
+    const unsigned char * firmware = 0;
+    size_t firmware_size = 0;
+    
+    switch (fw_version.rom_version)
+    {
+        case 0x01020001:
+            switch (clk_value)
+            {
+                case 26:
+                    firmware = ramps_0x01020001_26;
+                    firmware_size = sizeof(ramps_0x01020001_26);
+                    break;
+            }
+            break;
+            
+        case 0x01020200:
+            switch (clk_value)
+            {
+                case 26:
+                    firmware = ramps_0x01020200_26;
+                    firmware_size = sizeof(ramps_0x01020200_26);
+                    break;
+                    
+                case 40:
+                    firmware = ramps_0x01020200_40;
+                    firmware_size = sizeof(ramps_0x01020200_40);
+                    break;
+            }
+            break;
+            
+        case 0x01020201:
+            switch (clk_value)
+            {
+                case 26:
+                    firmware = ramps_0x01020201_26;
+                    firmware_size = sizeof(ramps_0x01020201_26);
+                    break;
+                    
+                case 40:
+                    firmware = ramps_0x01020201_40;
+                    firmware_size = sizeof(ramps_0x01020201_40);
+                    break;
+            }
+            break;
+            
+        case 0x11020000:
+            switch (clk_value)
+            {
+                case 40:
+                    firmware = ramps_0x11020000_40;
+                    firmware_size = sizeof(ramps_0x11020000_40);
+                    break;
+            }
+            break;
+            
+        case 0x31010000:
+            switch (clk_value)
+            {
+                case 40:
+                    firmware = ramps_0x31010000_40;
+                    firmware_size = sizeof(ramps_0x31010000_40);
+                    break;
+            }
+            
+        case 0x41020000:
+            switch (clk_value)
+            {
+                case 40:
+                    firmware = ramps_0x41020000_40;
+                    firmware_size = sizeof(ramps_0x41020000_40);
+                    break;
+            }
+            break;
+    }
+    
+    if ( !firmware || !firmware_size )
+    {
+        IOLog("%s(%p)::load_syscfg - unknown firmware version and base clock combination 0x%08x %d\n", getName(), this, fw_version.rom_version, clk_value);
+        return false;
+    }
+
+    ret = load_firmware(intf, firmware, firmware_size);
+    
+	return ret;
+}
 
 //
 // start
@@ -208,118 +672,60 @@ bool local_IOath3kfrmwr::start(IOService *provider)
         }
     }
     
-    // 2.3 Get the pipe for bulk endpoint 2 Out
-    OSNumber* nPipe = OSDynamicCast(OSNumber, getProperty("PipeNumber"));
-    if (!nPipe) {
-        DEBUG_LOG("%s(%p)::start - PipeNumber not specified\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;
-    }
-    IOUSBPipe * pipe = intf->GetPipeObj(nPipe->unsigned8BitValue());
-    if (!pipe) {
-        IOLog("%s(%p)::start - failed to find bulk out pipe %d\n", getName(), this, nPipe->unsigned8BitValue());
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;
-    }
-   
-    /*  // TODO: Test the alternative way to do it:
-     IOUSBFindEndpointRequest pipereq;
-     pipereq.type = kUSBBulk;
-     pipereq.direction = kUSBOut;
-     pipereq.maxPacketSize = BULK_SIZE;
-     pipereq.interval = 0;
-     IOUSBPipe *pipe = intf->FindNextPipe(NULL, &pipereq);
-     pipe = intf->FindNextPipe(pipe, &pipereq);
-     if (!pipe) {
-     DEBUG_LOG("%s(%p)::start - failed to find bulk out pipe 2\n", getName(), this);
-     intf->close(this);
-     pUsbDev->close(this);
-     return false;    
-     }
-     */
-
-    // 3.0 Send request to Control Endpoint to initiate the firmware transfer
-    IOUSBDevRequest ctlreq;
-    ctlreq.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-    ctlreq.bRequest = USB_REQ_DFU_DNLOAD;
-    ctlreq.wValue = 0;
-    ctlreq.wIndex = 0;
-    ctlreq.wLength = 20;
-    ctlreq.pData = firmware_buf;
-
-#if 0  // Trying to troubleshoot the problem after Restart (with OSBundleRequired Root)
-    for (int irep = 0; irep < 5; irep++) { // retry on error
-        err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
-        if (err)
-            IOLog("%s(%p)::start - failed to initiate firmware transfer (%d), retrying (%d)\n", getName(), this, err, irep+1);
-        else
-            break;
-    }
-#else
-    err = pUsbDev->DeviceRequest(&ctlreq); // (synchronous, will block)
-#endif
-    if (err) {
-        IOLog("%s(%p)::start - failed to initiate firmware transfer (%d)\n", getName(), this, err);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false;
-    }
-
-    // 3.1 Create IOMemoryDescriptor for bulk transfers
-    char buftmp[BULK_SIZE];
-    IOMemoryDescriptor * membuf = IOMemoryDescriptor::withAddress(&buftmp, BULK_SIZE, kIODirectionNone);
-    if (!membuf) {
-        IOLog("%s(%p)::start - failed to map memory descriptor\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false; 
-    }
-    err = membuf->prepare();
-    if (err) {
-        IOLog("%s(%p)::start - failed to prepare memory descriptor\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false; 
-    }
-    
-    // 3.2 Send the rest of firmware to the bulk pipe
-    char * buf = firmware_buf;
-    int size = sizeof(firmware_buf); 
-    buf += 20;
-    size -= 20;
-    int ii = 1;
-    while (size) {
-        int to_send = size < BULK_SIZE ? size : BULK_SIZE; 
+    OSBoolean* ath3012 = OSDynamicCast(OSBoolean, getProperty("bAth3012"));
+    if (ath3012->isTrue())
+    {
+        bool ret = false;
         
-        memcpy(buftmp, buf, to_send);
-        err = pipe->Write(membuf, 10000, 10000, to_send);
-        if (err) {
-            IOLog("%s(%p)::start - failed to write firmware to bulk pipe (err:%d, block:%d, to_send:%d)\n", getName(), this, err, ii, to_send);
+        do
+        {
+            OSNumber * bcdDevice = OSDynamicCast(OSNumber, getProperty("bcdDevice"));
+            if ( bcdDevice->unsigned16BitValue() > 0x0001 )
+                break;
+            
+            ret = load_patch( intf );
+            if ( !ret )
+            {
+                IOLog("%s(%p)::start - loading patch failed\n", getName(), this);
+                break;
+            }
+            
+            ret = load_syscfg( intf );
+            if ( !ret )
+            {
+                IOLog("%s(%p)::start - loading sysconfig failed\n", getName(), this);
+                break;
+            }
+            
+            ret = set_normal_mode( intf );
+            if ( !ret )
+            {
+                IOLog("%s(%p)::start - set normal mode failed\n", getName(), this);
+                break;
+            }
+            
+            switch_pid( intf );
+            
+            ret = true;
+        } while (false);
+        
+        if ( !ret )
+        {
             intf->close(this);
             pUsbDev->close(this);
-            return false; 
+            return false;
         }
-        buf += to_send;
-        size -= to_send;
-        ii++;
+    }
+    else
+    {
+        if (!load_firmware(intf, (const unsigned char *) firmware_buf, sizeof(firmware_buf)))
+        {
+            intf->close(this);
+            pUsbDev->close(this);
+            return false;
+        }
     }
     
-#ifdef DEBUG
-    IOLog("%s(%p)::start: firmware was sent to bulk pipe\n", getName(), this);
-#else
-    IOLog("IOath3kfrmwr: firmware loaded successfully!\n");
-#endif
-    
-    err = membuf->complete();
-    if (err) {
-        IOLog("%s(%p)::start - failed to complete memory descriptor\n", getName(), this);
-        intf->close(this);
-        pUsbDev->close(this);
-        return false; 
-    }
-
     /*  // TODO: Test the alternative way to do it:
      IOMemoryDescriptor * membuf = IOMemoryDescriptor::withAddress(&firmware_buf[20], 246804-20, kIODirectionNone); // sizeof(firmware_buf)
      if (!membuf) {

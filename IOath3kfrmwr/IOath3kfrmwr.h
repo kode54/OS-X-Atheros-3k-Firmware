@@ -19,6 +19,24 @@ class EXPORT local_IOath3kfrmwr : public IOService
     typedef IOService super;
     OSDeclareDefaultStructors(org_rehabman_IOath3kfrmwr)
     
+    bool load_firmware(IOUSBInterface * intf, unsigned char const* firmware, size_t firmware_size);
+    bool get_state(IOUSBInterface * intf, unsigned char * state);
+    
+    struct ath3k_version {
+        uint32_t    rom_version;
+        uint32_t    build_version;
+        uint32_t    ram_version;
+        uint8_t     ref_clock;
+        uint8_t     reserved[0x07];
+    };
+
+    bool get_version(IOUSBInterface * intf, struct ath3k_version * version);
+
+    bool switch_pid(IOUSBInterface * intf);
+    bool set_normal_mode(IOUSBInterface * intf);
+    bool load_patch(IOUSBInterface * intf);
+    bool load_syscfg(IOUSBInterface * intf);
+    
 protected:
     IOUSBDevice * pUsbDev;
         
